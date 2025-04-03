@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+
+  minio:
+    image: minio/minio:RELEASE.2024-05-01T01-11-10Z
+    container_name: my_minio
+    ports:
+      - "9003:9000"
+      - "9004:9001"
+    volumes:
+      - "my_minio:/data/"
+    environment:
+      MINIO_ROOT_USER: 'minio_user'
+      MINIO_ROOT_PASSWORD: 'minio_password'
+      MINIO_ADDRESS: ':9000'
+      MINIO_CONSOLE_ADDRESS: ':9001'
+    command: server /data
+
+  tusd:
+    image: tusproject/tusd:sha-775b805
+    container_name: my_tusd
+    ports:
+      - "1080:8080"
+    environment:
+      AWS_ACCESS_KEY_ID: "test-access"
+      AWS_SECRET_ACCESS_KEY: "test-secret"
+      AWS_REGION: "eu-west-1"
+    command: -s3-bucket mybucket -s3-object-prefix=videos/ -s3-endpoint http://host.docker.internal:9003
+      --hooks-http http://host.docker.internal:8005/api/v1/upload/handle-tusd-hooks
+      --hooks-enabled-events pre-create,pre-finish,post-finish
+      --hooks-http-forward-headers X-User-ID,Authorization
+    depends_on:
+      - minio
+
+
+volumes:
+  my_tusd:
+  my_minio:
